@@ -9,24 +9,24 @@ import java.util.ArrayList;
 import java.util.Objects;
 
 public class testSuperKassa {
-    private JSONArray jsonInput;
-    private int length;
-    private byte maskLength;
-    private JSONArray outputJson;
+    private String inputFileName;
+    private String outputFileName;
     private ClassLoader classloader;
+    private int routeLength;
+    private byte maskLength;
 
     public static void main(String[] args) {
-        testSuperKassa tsk = new testSuperKassa();
-        tsk.load("input.json");
+        testSuperKassa tsk = new testSuperKassa("input.json", "output.json");
         tsk.makeCompliteRoutes();
-        tsk.save("output.json");
     }
 
-    private testSuperKassa() {
-        classloader = Thread.currentThread().getContextClassLoader();
+    private testSuperKassa(String inputFileName, String outputFileName) {
+        this.classloader = Thread.currentThread().getContextClassLoader();
+        this.inputFileName = inputFileName;
+        this.outputFileName = outputFileName;
     }
 
-    private void load(String fileName) {
+    private JSONArray load(String fileName) {
         StringBuilder input = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(classloader.getResourceAsStream(fileName)), StandardCharsets.UTF_8))) {
             for (String line; (line = reader.readLine()) != null;) {
@@ -36,12 +36,15 @@ public class testSuperKassa {
             e.printStackTrace();
         }
 
-        jsonInput = new JSONArray(input.toString());
-        length = ((JSONArray) jsonInput.get(0)).length();
-        maskLength = (byte) (Math.pow(2, length) - 1);
+        JSONArray jsonInput = new JSONArray(input.toString());
+        routeLength = ((JSONArray) jsonInput.get(0)).length();
+        maskLength = (byte) (Math.pow(2, routeLength) - 1);
+        return jsonInput;
     }
 
     private void makeCompliteRoutes() {
+
+        JSONArray jsonInput = load(inputFileName);
 
         OneEntry[] map = jsonToEntryArray(jsonInput);
 
@@ -52,19 +55,20 @@ public class testSuperKassa {
             findFull(map, i + 1, list, map[i].getMask(), outputList);
         }
 
-        outputJson = new JSONArray();
+        JSONArray outputJson = new JSONArray();
         for (ArrayList<String[]> collect : outputList) {
-            String[] rowArray = new String[length];
-            for (int i = 0; i < length; i++) {
+            String[] rowArray = new String[routeLength];
+            for (int i = 0; i < routeLength; i++) {
                 for (String[] strings : collect) {
                     if (strings[i] != null) rowArray[i] = strings[i];
                 }
             }
             outputJson.put(rowArray);
         }
+        save(outputFileName, outputJson);
     }
 
-    private void save(String fileName) {
+    private void save(String fileName, JSONArray outputJson) {
         try (OutputStreamWriter outputStream = new OutputStreamWriter(new FileOutputStream(Objects.requireNonNull(classloader.getResource(fileName)).getPath()), StandardCharsets.UTF_8)){
             outputStream.write(outputJson.toString());
         } catch(IOException e){
@@ -76,9 +80,9 @@ public class testSuperKassa {
         OneEntry[] map = new OneEntry[jsonInput.length()];
         for (int i = 0; i < jsonInput.length(); i++) {
             JSONArray innerArray = (JSONArray) jsonInput.get(i);
-            String[] values = new String[length];
+            String[] values = new String[routeLength];
             byte mask = 0;
-            for (int j = 0; j < length; j++) {
+            for (int j = 0; j < routeLength; j++) {
                 if (!innerArray.get(j).equals(JSONObject.NULL)) {
                     mask |= 1 << j;
                     values[j] = (String) innerArray.get(j);
